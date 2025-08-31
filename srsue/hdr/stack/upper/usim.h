@@ -36,6 +36,15 @@ public:
   int  init(usim_args_t* args);
   void stop();
 
+  // my function
+  auth_result_t generate_k_asme_my(uint8_t* ck,
+                                   uint8_t* ik,
+                                   uint8_t* autn_enb,
+                                   uint16_t mcc,
+                                   uint16_t mnc,
+                                   uint8_t* k_asme_);
+
+
   // NAS interface
   auth_result_t generate_authentication_response(uint8_t* rand,
                                                  uint8_t* autn_enb,
