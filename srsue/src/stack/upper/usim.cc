@@ -102,6 +102,27 @@ void usim::stop() {}
   NAS interface
 *******************************************************************************/
 
+// add my function for calculate k_asme
+auth_result_t usim::generate_k_asme_my(uint8_t* ck,
+                                       uint8_t* ik,
+                                       uint8_t* autn_enb,
+                                       uint16_t mcc,
+                                       uint16_t mnc,
+                                       uint8_t* k_asme_)
+{
+  auth_result_t auth_result;
+  uint8_t       ak_xor_sqn[6];
+
+  memcpy(ak_xor_sqn, autn_enb, 6);
+
+  srsran::console("------ enter usim::generate_k_asme_my ------");
+  // Generate K_asme
+  security_generate_k_asme(ck, ik, ak_xor_sqn, mcc, mnc, k_asme_);
+  //security_generate_k_asme(ck, ik, ak_xor_sqn, ak_xor_sqn, mcc, mnc, k_asme);
+  return AUTH_OK;
+}
+
+
 auth_result_t usim::generate_authentication_response(uint8_t* rand,
                                                      uint8_t* autn_enb,
                                                      uint16_t mcc,

@@ -44,6 +44,15 @@ public:
   virtual bool get_home_mnc_bytes(uint8_t* mnc_, uint32_t n) = 0;
   // Get the home msin in bytes array encoded as bcd
   virtual bool          get_home_msin_bcd(uint8_t* msin_, uint32_t n)     = 0;
+
+  // my
+  virtual auth_result_t generate_k_asme_my(uint8_t* ck,
+                                           uint8_t* ik,
+                                           uint8_t* autn_enb,
+                                           uint16_t mcc,
+                                           uint16_t mnc,
+                                           uint8_t* k_asme_) = 0;
+
   virtual auth_result_t generate_authentication_response(uint8_t* rand,
                                                          uint8_t* autn_enb,
                                                          uint16_t mcc,

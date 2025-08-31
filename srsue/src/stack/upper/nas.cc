@@ -35,6 +35,12 @@
 #include "srsue/hdr/stack/upper/nas.h"
 #include "srsue/hdr/stack/upper/nas_idle_procedures.h"
 
+// include my myself
+#include <nlohmann/json.hpp>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <vector>
+
 #define LTE_MAC_OFFSET 1
 #define LTE_SEQ_OFFSET 5
 #define LTE_NAS_BEARER 0
@@ -1074,6 +1080,104 @@ void nas::parse_attach_reject(uint32_t lcid, unique_byte_buffer_t pdu, const uin
   }
 }
 
+bool aka_proxy_get_res(const uint8_t *rand_in,
+                       const uint8_t *autn_in,
+                       std::vector<uint8_t> &res_out,
+                       std::vector<uint8_t> &ck_out,
+                       std::vector<uint8_t> &ik_out,
+                       std::vector<uint8_t> &auts_out,
+                       int timeout_ms)
+{
+    // create socket
+    int sock = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (sock < 0) {
+        perror("socket");
+        return false;
+    }
+
+    struct sockaddr_un addr;
+    memset(&addr, 0, sizeof(addr));
+    addr.sun_family = AF_UNIX;
+    std::string path = "/tmp/aka_proxy.sock";   // proxy
+    strncpy(addr.sun_path, path.c_str(), sizeof(addr.sun_path)-1);
+
+    if (connect(sock, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
+        perror("connect");
+        close(sock);
+        return false;
+    }
+
+    // RAND + AUTN -> JSON
+    nlohmann::json j;
+    j["rand"] = nlohmann::json::array();
+    j["autn"] = nlohmann::json::array();
+
+    for (int i=0; i<16; i++) j["rand"].push_back(rand_in[i]);
+    for (int i=0; i<16; i++) j["autn"].push_back(autn_in[i]);
+
+    std::string payload = j.dump();
+    if (write(sock, payload.c_str(), payload.size()) < 0) {
+        perror("write");
+        close(sock);
+        return false;
+    }
+
+    // set recv timeout
+    struct timeval tv;
+    tv.tv_sec = timeout_ms / 1000;
+    tv.tv_usec = (timeout_ms % 1000) * 1000;
+    setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+
+    // receive JSON from proxy
+    char buf[1024];
+    int n = read(sock, buf, sizeof(buf)-1);
+    if (n <= 0) {
+        perror("read");
+        close(sock);
+        return false;
+    }
+    buf[n] = '\0';
+
+    close(sock);
+
+    // parse JSON
+    auto reply = nlohmann::json::parse(buf);
+
+    if (reply.find("res") != reply.end()) {
+        for (auto &b : reply["res"]) res_out.push_back((uint8_t)b.get<int>());
+    }
+    if (reply.find("ck") != reply.end()) {
+        for (auto &b : reply["ck"]) ck_out.push_back((uint8_t)b.get<int>());
+    }
+    if (reply.find("ik") != reply.end()) {
+        for (auto &b : reply["ik"]) ik_out.push_back((uint8_t)b.get<int>());
+    }
+    if (reply.find("auts") != reply.end()) {
+        for (auto &b : reply["auts"]) auts_out.push_back((uint8_t)b.get<int>());
+    }
+
+    return !res_out.empty() || !auts_out.empty();
+}
+
+// my function: for debug
+static std::string to_hex(const uint8_t* data, size_t len) {
+    std::ostringstream oss;
+    for (size_t i = 0; i < len; i++) {
+        oss << std::hex << std::setw(2) << std::setfill('0') << (int)data[i];
+    }
+    return oss.str();
+}
+
+int bcd_to_dec(uint16_t bcd)
+{
+    return ((bcd >> 8) & 0xF) * 100 +
+           ((bcd >> 4) & 0xF) * 10 +
+           (bcd & 0xF);
+}
+
+
+
+
 void nas::parse_authentication_request(uint32_t lcid, unique_byte_buffer_t pdu, const uint8_t sec_hdr_type)
 {
   LIBLTE_MME_AUTHENTICATION_REQUEST_MSG_STRUCT auth_req = {};
@@ -1090,12 +1194,50 @@ void nas::parse_authentication_request(uint32_t lcid, unique_byte_buffer_t pdu, 
 
   logger.info("MCC=%d, MNC=%d", mcc, mnc);
 
-  uint8_t res[16];
+  uint8_t res[16], ck[16], ik[16], auts[16];
   int     res_len = 0;
+  // my param
+  std::vector<uint8_t> res_vec;
+  std::vector<uint8_t> ck_vec;
+  std::vector<uint8_t> ik_vec;
+  std::vector<uint8_t> auts_vec;
+  
   logger.debug(auth_req.rand, 16, "Authentication request RAND");
   logger.debug(auth_req.autn, 16, "Authentication request AUTN");
-  auth_result_t auth_result =
-      usim->generate_authentication_response(auth_req.rand, auth_req.autn, mcc, mnc, res, &res_len, ctxt.k_asme);
+
+  // replace this function
+  //auth_result_t auth_result =
+  //    usim->generate_authentication_response(auth_req.rand, auth_req.autn, mcc, mnc, res, &res_len, ctxt.k_asme);
+  srsran::console("ctxt.k_asme: %s\n", to_hex(ctxt.k_asme, 32).c_str());
+  srsran::console("You are using your own function\n");
+  bool ok = aka_proxy_get_res(auth_req.rand, auth_req.autn, res_vec, ck_vec, ik_vec, auts_vec, 1000);
+  auth_result_t auth_result;
+  srsran::console("finish calculate res\n");
+  if (ok) {
+      srsran::console("OK!\n");
+      memcpy(res, res_vec.data(), res_vec.size());
+      memcpy(ck, ck_vec.data(), ck_vec.size());
+      memcpy(ik, ik_vec.data(), ik_vec.size());
+      res_len = res_vec.size();
+      auth_result = AUTH_OK;
+      // I put this back for calculate ctxt.k_asme (use function define in usim.cc)
+      srsran::console("ck: %s\n", to_hex(ck, 16).c_str());
+      srsran::console("ik: %s\n", to_hex(ik, 16).c_str());
+      srsran::console("ak_xor_sqn: %s\n", to_hex(auth_req.autn, 6).c_str());
+      srsran::console("MCC=%d, MNC=%d\n", bcd_to_dec(mcc), bcd_to_dec(mnc));
+      auth_result_t tmp = usim->generate_k_asme_my(ck, ik, auth_req.autn, mcc, mnc, ctxt.k_asme);
+      srsran::console("ctxt.k_asme: %s\n", to_hex(ctxt.k_asme, 32).c_str());
+
+  } else if (!auts_vec.empty()) {
+      srsran::console("auts_vec!\n");
+      res_len = auts_vec.size();
+      auth_result = AUTH_SYNCH_FAILURE;
+  } else {
+      srsran::console("else!\n");
+      auth_result = AUTH_FAILED;
+  }
+
+
   logger.debug(res, res_len, "Authentication request RES");
   if (LIBLTE_MME_TYPE_OF_SECURITY_CONTEXT_FLAG_NATIVE == auth_req.nas_ksi.tsc_flag) {
     ctxt.ksi = auth_req.nas_ksi.nas_ksi;
@@ -1210,10 +1352,16 @@ void nas::parse_security_mode_command(uint32_t lcid, unique_byte_buffer_t pdu)
   }
 
   // Generate NAS keys
+  // my debug
+  srsran::console("parse_security_mode_command...\n");
+  srsran::console("ctxt.k_asme: %s\n", to_hex(ctxt.k_asme, 32).c_str());
   usim->generate_nas_keys(
       ctxt.k_asme, ctxt_base.k_nas_enc, ctxt_base.k_nas_int, ctxt_base.cipher_algo, ctxt_base.integ_algo);
   logger.info(ctxt_base.k_nas_enc, 32, "NAS encryption key - k_nas_enc");
   logger.info(ctxt_base.k_nas_int, 32, "NAS integrity key - k_nas_int");
+  // my debug
+  srsran::console("k_nas_enc: %s\n", to_hex(ctxt_base.k_nas_enc, 32).c_str());
+  srsran::console("k_nas_int: %s\n", to_hex(ctxt_base.k_nas_int, 32).c_str());
 
   logger.debug("Generating integrity check. integ_algo:%d, count_dl:%d, lcid:%d",
                ctxt_base.integ_algo,
