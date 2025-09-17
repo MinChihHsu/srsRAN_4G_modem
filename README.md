@@ -144,6 +144,13 @@ imsi = <your_imsi>
 [nas]
 force_imsi_attach = true
 ```
+2-4 Set time_adv_nsamples
+Set this value when you encounter "Scheduling Request Failed"
+```
+[rf]
+time_adv_nsamples = 115
+```
+* Start with a low enough value, e.g. 115 samples, and then increase it by steps of five.
 
 **3. Execute proxy**
 
