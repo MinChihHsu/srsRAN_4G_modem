@@ -228,7 +228,7 @@ For physical SIM, you need to modify function `send_apdu` in my_apdu.py
 1. Select #1 SIM card for physical SIM
 ```
 # physical SIM: AT+CSUS=1, eSIM: AT+CSUS=2
-self.send_raw("echo -e 'AT+CSUS=2\\r' > /dev/umts_router")
+self.send_raw("echo -e 'AT+CSUS=1\\r' > /dev/umts_router")
 ```
 
 2. SELECT ADF USIM
