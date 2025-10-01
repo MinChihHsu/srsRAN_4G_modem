@@ -137,7 +137,7 @@ mac_nr_filename = /home/your_username/ue_mac_nr.pcap
 nas_filename = /home/your_username/ue_nas.pcap
 ```
 2-3 Set IMSI and force_imsi_attach
-* How to get your IMSI? Please check for note below.
+* How to get your IMSI? Please check for [note](https://github.com/MinChihHsu/srsRAN_4G_modem/blob/modem-support/README.md#1-how-to-get-your-imsi).
 ```
 [usim]
 imsi = <your_imsi>
@@ -151,7 +151,7 @@ Set this value when you encounter "Scheduling Request Failed"
 [rf]
 time_adv_nsamples = 115
 ```
-* Start with a low enough value, e.g. 115 samples, and then increase it by steps of five.
+* Start with a low enough value, e.g. 115 samples, and then increase it by steps of 5.
 
 **3. Execute proxy**
 
@@ -159,7 +159,7 @@ The target python file(my_apdu.py) is under this repo, you can paste it to where
 
 Execute the file with a phone connected to your computer.
 
-* This file is for eSIM, for physical SIM, please check note below.
+* This file is for eSIM, for physical SIM, please check for [note](https://github.com/MinChihHsu/srsRAN_4G_modem/tree/modem-support#2-proxy-file-for-physical-sim).
 
 ```
 sudo python3 my_apdu.py
