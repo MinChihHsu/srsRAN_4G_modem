@@ -136,7 +136,8 @@ mac_filename = /home/your_username/ue_mac.pcap
 mac_nr_filename = /home/your_username/ue_mac_nr.pcap
 nas_filename = /home/your_username/ue_nas.pcap
 ```
-2-3 Set imsi and force_imsi_attach
+2-3 Set IMSI and force_imsi_attach
+* How to get your IMSI? Please check for note below.
 ```
 [usim]
 imsi = <your_imsi>
@@ -158,6 +159,8 @@ The target python file(my_apdu.py) is under this repo, you can paste it to where
 
 Execute the file with a phone connected to your computer.
 
+* This file is for eSIM, for physical SIM, please check note below.
+
 ```
 sudo python3 my_apdu.py
 ```
@@ -175,3 +178,72 @@ The successful attachment should be shown as follows, “network attach successf
 
 ![](https://hackmd.io/_uploads/ByETYnUGp.png)
 
+# Note
+
+## 1. How to get your IMSI?
+
+**eSIM**
+```
+# Step 1: Select MF (3F00)
+echo -e 'AT+CSIM=14,"00A40004023F00"\r' > /dev/umts_router && cat /dev/umts_router
+
+# Step 2: Select ADF USIM(A0000000871002)
+echo -e 'AT+CSIM=24,"00A4040007A0000000871002"\r' > /dev/umts_router && cat /dev/umts_router
+
+# Step 3: Select EF_IMSI (6F07)
+echo -e 'AT+CSIM=14,"00A40004026F07"\r' > /dev/umts_router && cat /dev/umts_router
+
+# Step 4: Read 9 bytes IMSI
+echo -e 'AT+CSIM=10,"00B0000009"\r' > /dev/umts_router && cat /dev/umts_router
+```
+
+**Physical SIM**
+```
+# Step 1: Select MF (3F00)
+echo -e 'AT+CSIM=14,"00A40004023F00"\r' > /dev/umts_router && cat /dev/umts_router
+
+# Step 2: Select DF_GSM (7F20)
+echo -e 'AT+CSIM=14,"00A40004027F20"\r' > /dev/umts_router && cat /dev/umts_router
+
+# Step 3: Select EF_IMSI (6F07)
+echo -e 'AT+CSIM=14,"00A40004026F07"\r' > /dev/umts_router && cat /dev/umts_router
+
+# Step 4: Read 9 bytes IMSI
+echo -e 'AT+CSIM=10,"00B0000009"\r' > /dev/umts_router && cat /dev/umts_router
+```
+And you will get IMSI in BCD order
+
+For example:
+
+0849662914306484869000
+
+→ 08 (length) + 4966291430648486 (data) + 9000 (success status)
+
+→ 08 + 9 + **466011902511289(real IMSI)** + 9000
+
+## 2. Proxy file for physical SIM
+
+For physical SIM, you need to modify function `send_apdu` in my_apdu.py
+
+1. Select #1 SIM card for physical SIM
+```
+# physical SIM: AT+CSUS=1, eSIM: AT+CSUS=2
+self.send_raw("echo -e 'AT+CSUS=2\\r' > /dev/umts_router")
+```
+
+2. SELECT ADF USIM
+```
+self.send_raw("echo -e 'AT+CSIM=21,\"00A4040410<your_adf_usim_aid>\"\\r' > /dev/umts_router")
+```
+
+* How to get your ADF USIM AID?
+
+```
+adb shell
+su
+echo -e 'AT+CSIM=7, "00A40004022F00"\r' > /dev/umts_router && cat /dev/umts_router
+echo -e 'AT+CSIM=5, "00B2010400"\r' > /dev/umts_router && cat /dev/umts_router
+```
+And find 32 chars start with `A000000087`
+
+For example: A0000000871002FF33FF0189060500FF
