@@ -138,16 +138,17 @@ mac_filename = /home/your_username/ue_mac.pcap
 mac_nr_filename = /home/your_username/ue_mac_nr.pcap
 nas_filename = /home/your_username/ue_nas.pcap
 ```
-2-3 Set IMSI and force_imsi_attach
+2-3 Set IMSI, apn and force_imsi_attach
 * How to get your IMSI? Please check for [note](https://github.com/MinChihHsu/srsRAN_4G_modem/blob/modem-support/README.md#1-how-to-get-your-imsi).
 ```
 [usim]
 imsi = <your_imsi>
 
 [nas]
+apn = internet
 force_imsi_attach = true
 ```
-2-4 Set time_adv_nsamples
+2-3 Set time_adv_nsamples
 Set this value when you encounter "Scheduling Request Failed"
 ```
 [rf]
@@ -178,7 +179,13 @@ sudo ./srsue ue.conf
 
 The successful attachment should be shown as follows, “network attach successful”
 
-![](https://hackmd.io/_uploads/ByETYnUGp.png)
+**5. Connect to external network**
+
+Add default route for gateway, if IP: 10.x.x.x, gateway should be 10.x.x.1
+
+```
+sudo ip route add default via 10.x.x.1
+```
 
 # Note
 
