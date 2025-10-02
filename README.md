@@ -88,12 +88,14 @@ sudo uhd_find_devices
 **1. Install some libs**
 
 ```
-sudo apt-get install cmake libfftw3-dev libmbedtls-dev libboost-program-options-dev libconfig++-dev libsctp-dev
+sudo apt-get install cmake libfftw3-dev libmbedtls-dev libboost-program-options-dev libconfig++-dev libsctp-dev adb
 ```
 
 **2. Set srsLTE folder**
 
-Clone this repo with branch `modem-support` and copy the whole folder under ~/uhd/host/build
+srsRAN: Clone this repo with branch `modem-support` and copy the whole folder under ~/uhd/host/build
+
+srsLTE: [drive](https://drive.google.com/file/d/19OtsLGJBdKiSQ9W-bEG0R3n0Dka6KTux/view?usp=drive_link)
 
 You can rename the folder, below, I'll use `srsRAN_4G`
 
