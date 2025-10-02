@@ -57,7 +57,7 @@ sudo pip install requests
 Open a new terminal at path home/
 
 ```
-sudo apt-get install libboost-all-dev libusb-1.0-0-dev python-cheetah doxygen python-docutils g++ cmake python-setuptools python-mako
+sudo apt-get install libboost-all-dev libusb-1.0-0-dev python-cheetah doxygen python-docutils g++ cmake python-setuptools python-mako nlohmann-json-dev
 git clone https://github.com/EttusResearch/uhd
 cd uhd
 git checkout release_003_009_007 //We use 3.9.7 TLS version
